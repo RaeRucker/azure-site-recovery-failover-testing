@@ -4,23 +4,25 @@
     across one or more Recovery Services vaults, plus each vault's recovery plans.
 
 .DESCRIPTION
-    Run this before a DR test (and attach the output to the test report). It answers:
+    Run this before and after a test failover, and attach the CSV to the test report. It answers:
       - Is every VM replicating and healthy?
       - Is any VM already in a test failover that wasn't cleaned up?
       - Which VMs are in which recovery plan?
 
-    Read-only. Writes a CSV to .\output and prints a summary.
+    Read-only. Writes a CSV to the output folder at the top of the repo and prints a summary.
+    It checks the subscription in the current Azure context. Change it with Set-AzContext first.
 
 .EXAMPLE
     .\Get-AsrReadiness.ps1
 
 .EXAMPLE
-    .\Get-AsrReadiness.ps1 -VaultName rsv-dr-eastus2, rsv-dr-centralus
+    .\Get-AsrReadiness.ps1 -VaultName rsv-contoso-dr1, rsv-contoso-dr2
 #>
 [CmdletBinding()]
 param(
     # Limit to specific vaults. Defaults to every vault in the current subscription.
     [string[]] $VaultName,
+    # Where the CSV is saved.
     [string]   $OutputFolder = (Join-Path $PSScriptRoot '../output')
 )
 
@@ -83,7 +85,7 @@ foreach ($vault in $vaults) {
     }
 }
 
-# A VM is ready to test when replication is Normal, it's protected, and no test failover is open.
+# A VM is ready to test when replication health is Normal and no test failover is open.
 $notReady = @($items | Where-Object {
     $_.ReplicationHealth -ne 'Normal' -or
     ("$($_.TestFailoverState)" -notin @('', 'None', 'NotApplicable', 'Not applicable'))

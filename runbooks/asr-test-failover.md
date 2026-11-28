@@ -1,91 +1,91 @@
-# DR Test Failover Runbook (Azure Site Recovery)
+# Test Failover Runbook
 
-Purpose: prove that protected workloads can be recovered in the DR region within the agreed RTO/RPO, without affecting production.
+Use this to prove your protected VMs can be brought up in the disaster recovery region within your recovery targets, without touching the source VMs.
 
-Frequency: at least twice a year, and after any major change to replicated workloads.
-Estimated time: 2–4 hours, depending on how many VMs and how much application testing is needed.
+Run it at least twice a year, and after any big change to the replicated VMs. Plan on 2 to 4 hours, depending on how many VMs there are and how much app testing is needed.
 
-| Role | Responsibility |
+| Role | What they do |
 |---|---|
-| DR test lead (runs this runbook) | Executes the test, records timings, writes the report |
-| Application owners | Validate their applications in the isolated test network |
-| Escalation engineer | First escalation if a VM fails to fail over or boot |
-| Business contact | Approves the test window and signs off on results |
+| Test lead | Runs this runbook, writes down the times and writes the report |
+| App owners | Check their apps in the test network |
+| Escalation engineer | First call if a VM won't fail over or won't boot |
+| Business contact | Approves the test window and signs off on the results |
 
----
+Two terms used below. The recovery time objective, or RTO, is how long you can afford to be down. The recovery point objective, or RPO, is how much recent data you can afford to lose.
 
-## Phase 0: Plan (1–2 weeks before)
+## 1. Plan, one to two weeks before
 
-- [ ] Agree on the test window with the business contact and announce it to stakeholders.
-- [ ] Confirm the isolated test virtual network exists in the DR region and is not peered or connected to production. A test failover VM has the same hostname and IP as production, and connecting the two would cause conflicts.
-- [ ] Confirm what's needed inside the test network for app validation (for example a test domain controller, DNS, or a jump box). A domain-joined app usually needs a DC failed over or restored into the same isolated network.
-- [ ] Get the application test checklist from each app owner (what "working" means for them).
-- [ ] Record the RTO and RPO targets being tested.
+- [ ] Agree on the test window with the business contact and tell everyone involved.
+- [ ] Check the isolated test virtual network exists in the disaster recovery region and has no peering, VPN or other link to the source network. Test VMs keep the same names and IP addresses as the source VMs, so a link would cause conflicts.
+- [ ] Decide what the test network needs for app checks, like DNS, a jump box or a domain controller. A domain-joined app needs a domain controller in the test network. See [the dependency map](../docs/dependency-map.md).
+- [ ] Get a short checklist from each app owner that says what working means for their app.
+- [ ] Write down the RTO and RPO targets you're testing against.
 
-## Phase 1: Pre-checks (day of the test)
+## 2. Pre-checks, on the day
 
-1. Run the readiness script and save the CSV for the report:
+1. Run the readiness script from Cloud Shell and save the CSV for the report. The [README](../README.md#step-1-check-replication-health) has the exact steps.
+
    ```powershell
-   .\scripts\Get-AsrReadiness.ps1
+   ./scripts/Get-AsrReadiness.ps1
    ```
-2. In the portal, check each vault: Recovery Services vault → Site Recovery → Replicated items.
-   - [ ] Every VM shows Replication health: Healthy and Status: Protected.
-   - [ ] Failover readiness has no warnings.
-   - [ ] No VM shows a leftover test failover that needs cleanup.
-3. Note the latest recovery point for each VM. This is the RPO you'll achieve.
 
-> Stop here if anything is unhealthy. Fix replication or escalate first. Testing from a broken state proves nothing.
+2. In the portal, open each vault and go to Protected items → Replicated items. Check that:
+   - [ ] every VM shows Replication health Healthy and Status Protected
+   - [ ] no VM shows a failover readiness warning
+   - [ ] no VM still has a test failover waiting for cleanup
+3. Click each VM and write down its latest recovery point. That's the RPO you'll get.
 
-## Phase 2: Run the test failover
+Stop here if anything is unhealthy. Fix replication or escalate first. A test that starts from broken replication proves nothing.
 
-Use the recovery plan if one exists. It fails VMs over in the right order (for example DC, then database, then app servers) and is what a real disaster would use.
+## 3. Run the test failover
 
-1. Go to Vault → Site Recovery → Recovery Plans, select the plan → Test failover.
-   (For a single VM: Replicated items → VM → Test failover.)
-2. Recovery point:
-   - Latest processed (low RTO): the usual choice
-   - Latest app-consistent: for databases that need application consistency
-3. Azure virtual network: select the isolated test network. Double-check this. Never select the production network.
-4. Select OK and record the start time.
-5. Watch progress under Monitoring → Site Recovery jobs and record the time each VM finishes.
+Use the recovery plan if there is one. It brings VMs up in the right order, like domain controller, then database, then app servers, and it's what you'd use in a real disaster.
 
-## Phase 3: Validate
+1. Open the vault and go to Manage → Recovery Plans (Site Recovery). Click the plan, then click Test failover.
 
-Connect through the test network's jump box (or Bastion in the test VNet).
+   For a single VM, go to Protected items → Replicated items, click the VM, then click Test failover.
+2. For Recovery Point, pick one of these:
+   - Latest processed. The usual choice. It starts fastest.
+   - Latest app-consistent. Use it for databases that need app-consistent data.
+3. For Azure virtual network, pick the isolated test network. Double check this. Never pick the source network.
+4. Click OK and write down the start time.
+5. Go to Monitoring → Site Recovery jobs and write down the time each VM finishes.
 
-Infrastructure checks (DR test lead):
+## 4. Check the VMs and apps
 
-- [ ] Every VM in the plan is Running in the DR region.
-- [ ] Each VM boots and accepts a sign-in.
-- [ ] Disks are attached and the data volumes are present.
-- [ ] Data is current to the recovery point (check a recent file, log entry, or database row).
-- [ ] Name resolution works inside the test network.
+Connect through the jump box or Bastion in the test network.
 
-Application checks (app owners): work through each owner's checklist and record pass/fail with notes.
+The test lead checks the VMs:
 
-Record: total time from failover start to "application validated." That is the achieved RTO.
+- [ ] Every VM in the plan is running in the disaster recovery region.
+- [ ] Each VM boots and you can sign in.
+- [ ] The disks are attached and the data drives are there.
+- [ ] The data is as recent as the recovery point. Check a recent file, log entry or database row.
+- [ ] Names resolve inside the test network.
 
-## Phase 4: Clean up
+The app owners work through their checklists and write down pass or fail with notes.
 
-Cleanup deletes the test VMs and their resources. Production replication is unaffected.
+Write down the total time from the start of the failover to the last app being confirmed working. That's the RTO you got.
 
-1. Recovery Plans → the plan → Cleanup test failover (or per VM from Replicated items).
-2. Enter notes on the outcome and check Testing is complete, then select OK.
-3. Confirm the cleanup job succeeds under Site Recovery jobs.
-4. Re-run `Get-AsrReadiness.ps1` and confirm every VM is back to Healthy with no open test failovers.
+## 5. Clean up
 
-## Phase 5: Report
+Cleanup deletes the test VMs that the test failover created. Replication keeps running.
 
-Fill in [`../templates/dr-test-report.md`](../templates/dr-test-report.md) and send it to the business contact and technical team within two business days.
+1. Go to Manage → Recovery Plans (Site Recovery), click the plan and click Cleanup test failover. For a single VM, do it from Protected items → Replicated items.
+2. Add notes on how it went, tick Testing is complete and click OK.
+3. Go to Monitoring → Site Recovery jobs and check the cleanup job shows Successful.
+4. Run `./scripts/Get-AsrReadiness.ps1` again. It should say READY.
 
----
+## 6. Report
+
+Fill in [the report template](../templates/dr-test-report.md) and send it to the business contact and technical team within two business days.
 
 ## Escalation
 
-| Situation | Action |
+| What you see | What to do |
 |---|---|
-| A VM fails the test failover job | Check the job error under Site Recovery jobs. Retry once. If it fails again, escalate to the escalation engineer with the job ID. |
-| A VM fails to boot or is unreachable | Check Boot diagnostics and Serial console in the DR region, and capture screenshots for the report. |
-| Replication is unhealthy before the test | Do not test. Open a ticket, fix replication, and reschedule. |
-| Cleanup fails | Re-run cleanup. If it still fails, delete the test resource group manually after confirming it holds only test resources, then mark the test complete. |
-| Anything that could touch production | Stop, clean up, and escalate immediately. |
+| A VM's test failover job fails | Open the job under Monitoring → Site Recovery jobs and read the error. Retry once. If it fails again, send the job ID to the escalation engineer. |
+| A VM won't boot or can't be reached | On the test VM, check Help → Boot diagnostics and Help → Serial console. Take screenshots for the report. |
+| Replication is unhealthy before the test | Don't test. Open a ticket, fix replication and reschedule. |
+| Cleanup fails | Run cleanup again. If it still fails, delete the test VMs by hand after confirming they're test only, then run cleanup once more. |
+| Anything that could touch the source network | Stop, clean up and escalate right away. |

@@ -1,63 +1,65 @@
 # Disaster Recovery Test Report
 
+Replace everything in square brackets. The numbers in brackets are only examples.
+
 | | |
 |---|---|
 | Organization | [Organization or business unit] |
 | Test date | [Date] |
 | Test lead | [Name] |
-| Environment | Azure Site Recovery, [N] Recovery Services vault(s), [N] protected VMs |
-| Regions | Primary: [region] → DR: [region] |
-| Overall result | Passed / Passed with issues / Failed |
+| Environment | Azure Site Recovery, [number] Recovery Services vaults, [number] protected VMs |
+| Regions | Primary: [region] → Disaster recovery: [region] |
+| Overall result | [Passed, Passed with issues or Failed] |
 
-## Executive summary
+## Summary
 
-[Two or three sentences for leadership. Example: "All 12 protected servers recovered successfully in the disaster recovery region. Applications were validated by their owners, and recovery took 1 hour 20 minutes against a 4-hour target. No production systems were affected."]
+[Two or three sentences for leadership. For example: "All 12 protected servers came up in the disaster recovery region. App owners confirmed their apps worked. Recovery took 1 hour 20 minutes against a 4 hour target. The source VMs kept running the whole time."]
 
-## Objectives and results
+## Targets and results
 
 | Measure | Target | Achieved | Result |
 |---|---|---|---|
-| Recovery time (RTO) | [4 hours] | [1 h 20 m] | Pass |
-| Data loss window (RPO) | [1 hour] | [12 minutes] | Pass |
-| VMs recovered | [12] | [12] | Pass |
-| Applications validated | [5] | [5] | Pass |
+| Recovery time, RTO | [4 hours] | [1 hour 20 minutes] | [Pass] |
+| Data loss window, RPO | [1 hour] | [12 minutes] | [Pass] |
+| VMs recovered | [12] | [12] | [Pass] |
+| Apps confirmed working | [5] | [5] | [Pass] |
 
 ## Scope
 
 | Vault | Recovery plan | VMs |
 |---|---|---|
-| [vault-1] | [plan-1] | [vm-a, vm-b, vm-c] |
-| [vault-2] | [plan-2] | [vm-d, vm-e] |
+| [rsv-contoso-dr1] | [plan-1] | [vm-a, vm-b, vm-c] |
+| [rsv-contoso-dr2] | [plan-2] | [vm-d, vm-e] |
 
 ## Timeline
 
 | Time | Event |
 |---|---|
-| [09:00] | Pre-checks complete, all VMs healthy |
-| [09:10] | Test failover started (recovery point: latest processed) |
-| [09:42] | All VMs running in DR region |
-| [10:30] | Application validation complete |
-| [10:45] | Cleanup complete, replication healthy |
+| [09:00] | Pre-checks done, all VMs healthy |
+| [09:10] | Test failover started, recovery point Latest processed |
+| [09:42] | All VMs running in the disaster recovery region |
+| [10:30] | App checks done |
+| [10:45] | Cleanup done, replication healthy |
 
-## Validation results
+## Check results
 
-| VM / application | Boot | Sign-in | Data current | App check | Notes |
+| VM or app | Boots | Sign-in works | Data current | App works | Notes |
 |---|---|---|---|---|---|
-| [vm-a] | Pass | Pass | Pass | Pass | |
+| [vm-a] | [Pass] | [Pass] | [Pass] | [Pass] | |
 
-## Issues and follow-up actions
+## Issues and follow-up
 
 | # | Issue | Impact | Owner | Due |
 |---|---|---|---|---|
-| 1 | [e.g. App server needed manual DNS update in test network] | [Low] | [Name] | [Date] |
+| 1 | [App server needed a manual DNS change in the test network] | [Low] | [Name] | [Date] |
 
-## Method
+## How the test was run
 
-The test followed the standard DR test failover runbook: readiness checks, a test failover into an isolated network with no connection to production, validation by infrastructure and application owners, cleanup, and post-test replication checks. Production systems and replication were not affected.
+The test followed the test failover runbook. Readiness checks ran first. VMs were test failed over into an isolated network with no link to the source network. The test lead and app owners checked them. Cleanup ran, then replication was checked again. [Say whether the source VMs or replication were affected.]
 
 ## Sign-off
 
 | Name | Role | Date |
 |---|---|---|
-| | Business / IT owner | |
-| | DR test lead | |
+| | Business or IT owner | |
+| | Test lead | |
